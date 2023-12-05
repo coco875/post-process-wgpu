@@ -51,7 +51,7 @@ const min_depth = 0.310;
 const max_depth = 0.325;
 const depth_size = 0.005;
 const intensity = 4.0;
-const smooth_size = 0.005;
+const smooth_size = 0.003;
 
 // Bokeh disc.
 // by David Hoskins.
