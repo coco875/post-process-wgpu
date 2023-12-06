@@ -2,7 +2,9 @@ use std::{borrow::Cow, f32::consts, iter, mem, ops::Range, sync::Arc};
 
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::{align_to, DeviceExt};
-use winit::window::Window;
+use winit::{window::{Window, WindowBuilder}, event_loop::{EventLoop, ControlFlow}, event::{Event, WindowEvent, KeyboardInput, ElementState, VirtualKeyCode}};
+
+mod texture;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -152,12 +154,14 @@ struct State {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
+    window: Window,
+    size: winit::dpi::PhysicalSize<u32>,
     entities: Vec<Entity>,
     lights: Vec<Light>,
     lights_are_dirty: bool,
     shadow_pass: Pass,
     forward_pass: Pass,
-    forward_depth: wgpu::TextureView,
+    depth_texture: texture::Texture,
     entity_bind_group: wgpu::BindGroup,
     light_storage_buf: wgpu::Buffer,
     entity_uniform_buf: wgpu::Buffer,
@@ -183,14 +187,13 @@ impl State {
         projection * view
     }
 
-    fn create_depth_texture(
-        config: &wgpu::SurfaceConfiguration,
-        device: &wgpu::Device,
+    fn create_depth_texture(&mut self,
+        new_size: winit::dpi::PhysicalSize<u32>,
     ) -> wgpu::TextureView {
-        let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
+        let depth_texture = self.device.create_texture(&wgpu::TextureDescriptor {
             size: wgpu::Extent3d {
-                width: config.width,
-                height: config.height,
+                width: new_size.width,
+                height: new_size.height,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -209,7 +212,7 @@ impl State {
         wgpu::Features::DEPTH_CLIP_CONTROL
     }
 
-    pub async fn init(
+    pub async fn new(
         window: Window
     ) -> Self {
         let size = window.inner_size();
@@ -270,7 +273,7 @@ impl State {
             height: size.height,
             present_mode: surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
-            view_formats: vec![],
+            view_formats: vec![surface_format],
         };
         surface.configure(&device, &config);
 
@@ -729,48 +732,78 @@ impl State {
             }
         };
 
-        let forward_depth = Self::create_depth_texture(&config, &device);
+        let depth_texture = texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
         State {
             surface,
             device,
             queue,
             config,
+            size,
             entities,
             lights,
+            window,
             lights_are_dirty: true,
             shadow_pass,
             forward_pass,
-            forward_depth,
+            depth_texture,
             light_storage_buf,
             entity_uniform_buf,
             entity_bind_group,
         }
     }
 
-    fn update(&mut self, _event: winit::event::WindowEvent) {
+    fn update(&mut self) {
         //empty
     }
 
     fn resize(
         &mut self,
-        config: &wgpu::SurfaceConfiguration,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        new_size: winit::dpi::PhysicalSize<u32>,
     ) {
         // update view-projection matrix
-        let mx_total = Self::generate_matrix(config.width as f32 / config.height as f32);
+        let mx_total = Self::generate_matrix(new_size.width as f32 / new_size.height as f32);
         let mx_ref: &[f32; 16] = mx_total.as_ref();
-        queue.write_buffer(
+        self.queue.write_buffer(
             &self.forward_pass.uniform_buf,
             0,
             bytemuck::cast_slice(mx_ref),
         );
 
-        self.forward_depth = Self::create_depth_texture(config, device);
+        self.depth_texture =
+                texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
     }
 
-    fn render(&mut self, view: &wgpu::TextureView) {
+    fn window(&self) -> &Window {
+        &self.window
+    }
+
+    #[allow(unused_variables)]
+    fn input(&mut self, event: &WindowEvent) -> bool {
+        false
+        // self.camera.camera_controller.process_events(event)
+    }
+
+    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        let output = self.surface.get_current_texture()?;
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        self.render_scene(&view, &mut encoder);
+        self.queue.submit(Some(encoder.finish()));
+        output.present();
+
+        // println!("FPS: {}", 1.0 / self.last_frame_time.elapsed().as_secs_f64());
+
+        Ok(())
+    }
+
+    fn render_scene(&mut self, view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
         // update uniforms
         for entity in self.entities.iter_mut() {
             if entity.rotation_speed != 0.0 {
@@ -804,9 +837,6 @@ impl State {
                 );
             }
         }
-
-        let mut encoder =
-            self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
         encoder.push_debug_group("shadow passes");
         for (i, light) in self.lights.iter().enumerate() {
@@ -875,7 +905,7 @@ impl State {
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.forward_depth,
+                    view: &self.depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Discard,
@@ -896,7 +926,67 @@ impl State {
             }
         }
         encoder.pop_debug_group();
-
-        self.queue.submit(iter::once(encoder.finish()));
     }
+}
+
+pub async fn run() {
+    env_logger::init();
+
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new().build(&event_loop).unwrap();
+
+    // State::new uses async code, so we're going to wait for it to finish
+    let mut state = State::new(window).await;
+
+    event_loop.run(move |event, _, control_flow| {
+        match event {
+            Event::WindowEvent {
+                ref event,
+                window_id,
+            } if window_id == state.window().id() => {
+                if !state.input(event) {
+                    match event {
+                        WindowEvent::CloseRequested
+                        | WindowEvent::KeyboardInput {
+                            input:
+                                KeyboardInput {
+                                    state: ElementState::Pressed,
+                                    virtual_keycode: Some(VirtualKeyCode::Escape),
+                                    ..
+                                },
+                            ..
+                        } => *control_flow = ControlFlow::Exit,
+                        WindowEvent::Resized(physical_size) => {
+                            state.resize(*physical_size);
+                        }
+                        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                            // new_inner_size is &&mut so w have to dereference it twice
+                            state.resize(**new_inner_size);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Event::RedrawRequested(window_id) if window_id == state.window().id() => {
+                state.update();
+                match state.render() {
+                    Ok(_) => {}
+                    // Reconfigure the surface if it's lost or outdated
+                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                        state.resize(state.size)
+                    }
+                    // The system is out of memory, we should probably quit
+                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+
+                    Err(wgpu::SurfaceError::Timeout) => log::warn!("Surface timeout"),
+                }
+            }
+            Event::RedrawEventsCleared => {
+                // RedrawRequested will only trigger once, unless we manually
+                // request it.
+                state.window().request_redraw();
+            }
+            _ => {}
+        }
+    });
 }
