@@ -1,4 +1,4 @@
-use std::{borrow::Cow, f32::consts, iter, mem, ops::Range, sync::Arc};
+use std::{borrow::Cow, f32::consts, mem, ops::Range, sync::Arc};
 
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::{align_to, DeviceExt};
@@ -185,31 +185,6 @@ impl State {
             glam::Vec3::Z,
         );
         projection * view
-    }
-
-    fn create_depth_texture(&mut self,
-        new_size: winit::dpi::PhysicalSize<u32>,
-    ) -> wgpu::TextureView {
-        let depth_texture = self.device.create_texture(&wgpu::TextureDescriptor {
-            size: wgpu::Extent3d {
-                width: new_size.width,
-                height: new_size.height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: Self::DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            label: None,
-            view_formats: &[],
-        });
-
-        depth_texture.create_view(&wgpu::TextureViewDescriptor::default())
-    }
-
-    fn optional_features() -> wgpu::Features {
-        wgpu::Features::DEPTH_CLIP_CONTROL
     }
 
     pub async fn new(
