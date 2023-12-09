@@ -153,7 +153,7 @@ struct State {
     instances: Vec<Instance>,
     instance_buffer: wgpu::Buffer,
     depth_texture: texture::Texture,
-    blur: depth::Depth,
+    depth: depth::Depth,
     // post processing
     texture_1: wgpu::Texture,
     texture_1_view: wgpu::TextureView,
@@ -434,7 +434,7 @@ impl State {
         let texture_2 = device.create_texture(&texture_2_desc);
         let texture_2_view = texture_2.create_view(&Default::default());
 
-        let blur = depth::Depth::new(&config, &device, &texture_1_view, &depth_texture.view);
+        let depth = depth::Depth::new(&config, &device, &texture_1_view, &depth_texture.view);
 
         Self {
             surface,
@@ -454,7 +454,7 @@ impl State {
             instances,
             instance_buffer,
             depth_texture,
-            blur,
+            depth,
             texture_1,
             texture_1_view,
             texture_2,
@@ -517,7 +517,7 @@ impl State {
             self.depth_texture =
                 texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
             self.redo_texture();
-            self.blur.resize(&self.device, &self.texture_1_view, &self.depth_texture.view);
+            self.depth.resize(&self.device, &self.texture_1_view, &self.depth_texture.view);
         }
     }
 
@@ -548,13 +548,11 @@ impl State {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
         self.render_scene(&self.texture_1_view, &mut encoder);
-        self.blur.render(&view, &mut encoder);
+        self.depth.render(&view, &mut encoder);
         self.queue.submit(Some(encoder.finish()));
         output.present();
 
         // println!("FPS: {}", 1.0 / self.last_frame_time.elapsed().as_secs_f64());
-        // println!("point(0,0,0) : {:?}", self.camera.view_proj * cgmath::Vector4::new(0.0, 0.0, 0.0, 1.0));
-        // println!("point(5,0,5) : {:?}", self.camera.view_proj * cgmath::Vector4::new(5.0, 0.0, 5.0, 1.0));
 
         Ok(())
     }
@@ -598,7 +596,6 @@ impl State {
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
     env_logger::init();
 
