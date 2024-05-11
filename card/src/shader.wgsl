@@ -38,7 +38,11 @@ fn vs_main(
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
     let matrix = camera.view_proj * model_matrix;
-    out.normal = model.normal;
+    out.normal = mat3x3<f32>(
+        matrix[0].xyz,
+        matrix[1].xyz,
+        matrix[2].xyz
+        ) * model.normal;
     out.clip_position = matrix * vec4<f32>(model.position, 1.0);
     return out;
 }
@@ -73,8 +77,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     if (color.a < 0.1) {
         discard;
     }
-    if (on_line(0.0, vec2<f32>(abs(in.normal.x/3.1415),.0), 0.03, in.tex_coords.x, in.tex_coords.y)) {
-        return vec4<f32>(1.0);
+    if (on_line(in.normal.y, (in.normal.xz-1.)*2., 0.03, in.tex_coords.x, in.tex_coords.y)) { // 1.-vec2<f32>((in.normal.x+1.)/2.,(in.normal.z+1.)/2.)
+        return vec4<f32>(color.xyz*10.0,1.0);
     }
-    return vec4<f32>(in.normal, 1.0);
+    return color; // vec4<f32>((in.normal+1.)/2., 1.0);
 }
