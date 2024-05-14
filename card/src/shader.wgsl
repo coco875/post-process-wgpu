@@ -83,8 +83,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 
     if (in.dot < 0.4) {
-        let coord = in.clip_position.xz;// in.tex_coords*dim;
-        if (coord.x%2.0 <= 1.0 || coord.y%2.0 <= 1.0) {
+        let coord = in.clip_position.xy;// in.tex_coords*dim;
+        if (coord.x%2.0 < 1.0 || coord.y%2.0 < 1.0) {
             return vec4<f32>(vec3<f32>(0.5), 1.0)*color;
         }
         return color;
