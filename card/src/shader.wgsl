@@ -22,6 +22,7 @@ struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) tex_coords: vec2<f32>,
     @location(1) normal: vec3<f32>,
+    @location(2) dot: f32,
 }
 
 @vertex
@@ -43,6 +44,7 @@ fn vs_main(
         matrix[1].xyz,
         matrix[2].xyz
         ) * model.normal;
+    out.dot = dot(out.normal, model.normal);
     out.clip_position = matrix * vec4<f32>(model.position, 1.0);
     return out;
 }
@@ -71,19 +73,25 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     if (color.a < 0.1) {
         discard;
     }
-    var d = dot(in.normal, vec3<f32>(0.0, 0.0, 1.0));
-    var pos = vec2<f32>(in.normal.x*2., 0.0);
+    var pos = vec2<f32>(in.normal.x*2.5, in.normal.y*2.5);
     if (pos.x > 1.0) {
-        pos += vec2<f32>(-2.0, 0.0);
-        if (on_line(0.7853, pos, 0.03, in.tex_coords.x, in.tex_coords.y)) {
-            return vec4<f32>(color.xyz*10.0,1.0);
-        }
+        pos.x += -2.0;
     }
     if (pos.x < -1.0) {
-        pos += vec2<f32>(2.0, 0.0);
-        if (on_line(0.7853, pos, 0.03, in.tex_coords.x, in.tex_coords.y)) {
+        pos.x += 2.0;
+    }
+
+    if (pos.y > 1.0) {
+        pos.y += -2.0;
+    }
+    if (pos.y < -1.0) {
+        pos.y += 2.0;
+    }
+
+    if (true) {//pos.x > 1.0 || pos.y > 1.0 || pos.x < -1.0 || pos.y < -1.0) {
+        if (on_line(0.7853, pos+0.5, 0.03, in.tex_coords.x, in.tex_coords.y)) {
             return vec4<f32>(color.xyz*10.0,1.0);
         }
     }
-    return vec4<f32>(vec3<f32>(d), 1.0);
+    return vec4<f32>(vec3<f32>(in.dot), 1.0);
 }

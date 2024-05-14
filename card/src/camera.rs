@@ -86,14 +86,15 @@ impl Camera {
 
         // Prevents glitching when camera gets too close to the
         // center of the scene.
-        if self.controller.is_forward_pressed && forward_mag > self.controller.speed {
-            self.eye += forward_norm * self.controller.speed;
-        }
-        if self.controller.is_backward_pressed {
-            self.eye -= forward_norm * self.controller.speed;
-        }
+        // if self.controller.is_forward_pressed && forward_mag > self.controller.speed {
+        //     self.eye += forward_norm * self.controller.speed;
+        // }
+        // if self.controller.is_backward_pressed {
+        //     self.eye -= forward_norm * self.controller.speed;
+        // }
 
         let right = forward_norm.cross(self.up);
+        let up = right.cross(forward_norm);
 
         // Redo radius calc in case the up/ down is pressed.
         let forward = self.target - self.eye;
@@ -107,6 +108,13 @@ impl Camera {
         }
         if self.controller.is_left_pressed {
             self.eye = self.target - (forward - right * self.controller.speed).normalize() * forward_mag;
+        }
+
+        if self.controller.is_forward_pressed {
+            self.eye = self.target - (forward + up * self.controller.speed).normalize() * forward_mag;
+        }
+        if self.controller.is_backward_pressed {
+            self.eye = self.target - (forward - up * self.controller.speed).normalize() * forward_mag;
         }
     }
 }

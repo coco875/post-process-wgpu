@@ -27,8 +27,5 @@ var s_diffuse: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // var dimensions = textureDimensions(t_diffuse);
-    // var coef:i32 = 2 * i32(f32(dimensions.x)/f32(dimensions.y));
-    // return textureSample(t_diffuse, s_diffuse, vec2<f32>(vec2<i32>(in.tex_coords*vec2<f32>(dimensions))/coef*coef)/vec2<f32>(dimensions));
     return textureSample(t_diffuse, s_diffuse, in.tex_coords);
 }
