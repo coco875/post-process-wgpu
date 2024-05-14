@@ -285,7 +285,7 @@ impl<'a> State<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let screen_width = camera.aspect*200.0;
+        let screen_width = (camera.aspect*200.0).max(1.0);
         let screen_height = 200.0;
 
         let depth_texture =

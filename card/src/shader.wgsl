@@ -70,28 +70,25 @@ fn on_line(angle:f32, offset:vec2<f32>, thickness: f32, x: f32, y: f32) -> bool 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
+    var dim = vec2<f32>(textureDimensions(t_diffuse, 0));
     if (color.a < 0.1) {
         discard;
     }
-    var pos = vec2<f32>(in.normal.x*2.5, in.normal.y*2.5);
-    if (pos.x > 1.0) {
-        pos.x += -2.0;
-    }
-    if (pos.x < -1.0) {
-        pos.x += 2.0;
-    }
-
-    if (pos.y > 1.0) {
-        pos.y += -2.0;
-    }
-    if (pos.y < -1.0) {
-        pos.y += 2.0;
-    }
-
-    if (true) {//pos.x > 1.0 || pos.y > 1.0 || pos.x < -1.0 || pos.y < -1.0) {
-        if (on_line(0.7853, pos+0.5, 0.03, in.tex_coords.x, in.tex_coords.y)) {
+    var pos = vec2<f32>(in.normal.x/in.normal.y,0.0)*2.0;
+    if (pos.x > 2.0 || pos.x < -2.0) {
+        pos -= sign(pos.x)*vec2<f32>(4.0,0.0);
+        if (on_line(0.7853, pos+.5, 0.03, in.tex_coords.x, in.tex_coords.y)) {
             return vec4<f32>(color.xyz*10.0,1.0);
         }
     }
-    return vec4<f32>(vec3<f32>(in.dot), 1.0);
+
+    if (in.dot < 0.4) {
+        let coord = in.clip_position.xz;// in.tex_coords*dim;
+        if (coord.x%2.0 <= 1.0 || coord.y%2.0 <= 1.0) {
+            return vec4<f32>(vec3<f32>(0.5), 1.0)*color;
+        }
+        return color;
+    }
+
+    return color; //vec4<f32>(vec3<f32>(in.dot), 1.0);
 }
