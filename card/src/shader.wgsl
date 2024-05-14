@@ -72,11 +72,18 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         discard;
     }
     var d = dot(in.normal, vec3<f32>(0.0, 0.0, 1.0));
-    if (d>0.9) {
-        return color;
+    var pos = vec2<f32>(in.normal.x*2., 0.0);
+    if (pos.x > 1.0) {
+        pos += vec2<f32>(-2.0, 0.0);
+        if (on_line(0.7853, pos, 0.03, in.tex_coords.x, in.tex_coords.y)) {
+            return vec4<f32>(color.xyz*10.0,1.0);
+        }
     }
-    if (on_line(0.7853, vec2<f32>(in.normal.x, 0.0)+0.5, 0.03, in.tex_coords.x, in.tex_coords.y)) { // 1.-vec2<f32>((in.normal.x+1.)/2.,(in.normal.z+1.)/2.)
-        return vec4<f32>(color.xyz*10.0,1.0);
+    if (pos.x < -1.0) {
+        pos += vec2<f32>(2.0, 0.0);
+        if (on_line(0.7853, pos, 0.03, in.tex_coords.x, in.tex_coords.y)) {
+            return vec4<f32>(color.xyz*10.0,1.0);
+        }
     }
     return vec4<f32>(vec3<f32>(d), 1.0);
 }

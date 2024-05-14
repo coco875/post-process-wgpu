@@ -285,10 +285,33 @@ impl<'a> State<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let coef = f32::max(config.width as f32, config.height as f32)/f32::min(config.width as f32, config.height as f32)*2.0;
+        let screen_width = camera.aspect*200.0;
+        let screen_height = 200.0;
 
         let depth_texture =
-            texture::Texture::create_depth_texture(&device, (config.width as f32/coef) as u32, (config.height as f32/coef) as u32, "depth_texture");
+            texture::Texture::create_depth_texture(&device, screen_width as u32, screen_height as u32, "depth_texture");
+
+        let texture_1_desc = wgpu::TextureDescriptor {
+            label: Some("Texture 1"),
+            size: wgpu::Extent3d {
+                width: screen_width as u32,
+                height: screen_height as u32,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        };
+
+        let texture_1 = device.create_texture(&texture_1_desc);
+        let texture_1_view = texture_1.create_view(&Default::default());
+
+        let pixel = PixelArt::new(&config, &device, &texture_1_view);
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -355,28 +378,6 @@ impl<'a> State<'a> {
             multiview: None,
         });
 
-        let texture_1_desc = wgpu::TextureDescriptor {
-            label: Some("Texture 1"),
-            size: wgpu::Extent3d {
-                width: (config.width as f32/coef) as u32,
-                height: (config.height as f32/coef) as u32,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        };
-
-        let texture_1 = device.create_texture(&texture_1_desc);
-        let texture_1_view = texture_1.create_view(&Default::default());
-
-        let pixel = PixelArt::new(&config, &device, &texture_1_view);
-
         Self {
             surface,
             device,
@@ -406,15 +407,18 @@ impl<'a> State<'a> {
             self.config.height = new_size.height;
             self.size = new_size;
             self.camera.aspect = self.config.width as f32 / self.config.height as f32;
-            let coef = f32::max(self.config.width as f32, self.config.height as f32)/f32::min(self.config.width as f32, self.config.height as f32)*3.0;
             self.surface.configure(&self.device, &self.config);
+            
+            let screen_width = self.camera.aspect*200.0;
+            let screen_height = 200.0;
+            
             self.depth_texture =
-                texture::Texture::create_depth_texture(&self.device, (self.config.width as f32/coef) as u32, (self.config.height as f32/coef) as u32, "depth_texture");
+                texture::Texture::create_depth_texture(&self.device, screen_width as u32, screen_height as u32, "depth_texture");
             let texture_1_desc = wgpu::TextureDescriptor {
                 label: Some("Texture 1"),
                 size: wgpu::Extent3d {
-                    width: (self.config.width as f32/coef) as u32,
-                    height: (self.config.height as f32/coef) as u32,
+                    width: screen_width as u32,
+                    height: screen_height as u32,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
