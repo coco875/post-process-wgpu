@@ -285,8 +285,10 @@ impl<'a> State<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
+        let coef = f32::max(config.width as f32, config.height as f32)/f32::min(config.width as f32, config.height as f32)*2.0;
+
         let depth_texture =
-            texture::Texture::create_depth_texture(&device, &config, "depth_texture");
+            texture::Texture::create_depth_texture(&device, (config.width as f32/coef) as u32, (config.height as f32/coef) as u32, "depth_texture");
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -356,8 +358,8 @@ impl<'a> State<'a> {
         let texture_1_desc = wgpu::TextureDescriptor {
             label: Some("Texture 1"),
             size: wgpu::Extent3d {
-                width: config.width,
-                height: config.height,
+                width: (config.width as f32/coef) as u32,
+                height: (config.height as f32/coef) as u32,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -404,14 +406,15 @@ impl<'a> State<'a> {
             self.config.height = new_size.height;
             self.size = new_size;
             self.camera.aspect = self.config.width as f32 / self.config.height as f32;
+            let coef = f32::max(self.config.width as f32, self.config.height as f32)/f32::min(self.config.width as f32, self.config.height as f32)*3.0;
             self.surface.configure(&self.device, &self.config);
             self.depth_texture =
-                texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
+                texture::Texture::create_depth_texture(&self.device, (self.config.width as f32/coef) as u32, (self.config.height as f32/coef) as u32, "depth_texture");
             let texture_1_desc = wgpu::TextureDescriptor {
                 label: Some("Texture 1"),
                 size: wgpu::Extent3d {
-                    width: self.config.width,
-                    height: self.config.height,
+                    width: (self.config.width as f32/coef) as u32,
+                    height: (self.config.height as f32/coef) as u32,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,

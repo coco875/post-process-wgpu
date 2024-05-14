@@ -65,20 +65,18 @@ fn on_line(angle:f32, offset:vec2<f32>, thickness: f32, x: f32, y: f32) -> bool 
     return abs(x_rot) - thickness < 0.0;
 }
 
-fn produce_pos(angle:f32) -> vec2<f32> {
-    let c = cos(angle);
-    let s = sin(angle);
-    return vec2<f32>(c, s);
-}
-
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var color: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     if (color.a < 0.1) {
         discard;
     }
-    if (on_line(in.normal.y, (in.normal.xz-1.)*2., 0.03, in.tex_coords.x, in.tex_coords.y)) { // 1.-vec2<f32>((in.normal.x+1.)/2.,(in.normal.z+1.)/2.)
+    var d = dot(in.normal, vec3<f32>(0.0, 0.0, 1.0));
+    if (d>0.9) {
+        return color;
+    }
+    if (on_line(0.7853, vec2<f32>(in.normal.x, 0.0)+0.5, 0.03, in.tex_coords.x, in.tex_coords.y)) { // 1.-vec2<f32>((in.normal.x+1.)/2.,(in.normal.z+1.)/2.)
         return vec4<f32>(color.xyz*10.0,1.0);
     }
-    return color; // vec4<f32>((in.normal+1.)/2., 1.0);
+    return vec4<f32>(vec3<f32>(d), 1.0);
 }
