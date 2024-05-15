@@ -111,30 +111,19 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     if (color.a < 0.1) {
         discard;
     }
-    if (in.dot < 0.1) {
+    if (in.dot < 0.2) {
         return vec4<f32>(vec3<f32>(0.5), 1.0)*color;
     }
     let coord = in.clip_position.xy; // in.tex_coords*dim;
-    if (in.dot < 0.2) {
-        if (!(coord.x%2.0 < 1.0 && coord.y%2.0 < 1.0)) {
-            return vec4<f32>(vec3<f32>(0.5), 1.0)*color;
-        }
-    } else if (in.dot < 0.3) {
-        if (coord.x%2.0 < 1.0 == coord.y%2.0 < 1.0) {
-            return vec4<f32>(vec3<f32>(0.5), 1.0)*color;
-        }
-    } else if (in.dot < 0.4) {
-        if (coord.x%2.0 < 1.0 && coord.y%2.0 < 1.0) {
-            return vec4<f32>(vec3<f32>(0.5), 1.0)*color;
+    if (in.dot < 0.3) {
+        if (coord.x%4.0 < 2.0 == coord.y%4.0 < 2.0) {
+            color = vec4<f32>(vec3<f32>(0.7), 1.0)*color;
         }
     }
 
     var pos = vec2<f32>(in.normal.x,in.normal.y)*1.0;
-    if (pos.x > 2.0 || pos.x < -2.0) {
-        pos -= sign(pos.x)*vec2<f32>(4.0,0.0);
-        if (on_line(0.7853, pos+.5, 0.03, in.tex_coords.x, in.tex_coords.y)) {
-            return vec4<f32>(color.xyz*10.0,1.0);
-        }
+    if (on_line(0.7853, pos+.5, 0.03, in.tex_coords.x, in.tex_coords.y)) {
+        color = vec4<f32>(color.xyz*8.0,1.0);
     }
 
     return color; //vec4<f32>(vec3<f32>(in.dot), 1.0);
