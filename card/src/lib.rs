@@ -278,7 +278,7 @@ impl<'a> State<'a> {
 
         log::warn!("Load model");
         let obj_model =
-            resources::load_model("card.obj", &device, &queue, &texture_bind_group_layout)
+            resources::load_model("cards/card.obj", &device, &queue, &texture_bind_group_layout)
                 .await
                 .unwrap();
 
