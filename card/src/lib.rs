@@ -105,6 +105,8 @@ struct State<'a> {
     texture_1_view: wgpu::TextureView,
 }
 
+const SIZE: f32 = 200.0;
+
 impl<'a> State<'a> {
     async fn new(window: &'a Window) -> State<'a> {
         let size = window.inner_size();
@@ -285,8 +287,8 @@ impl<'a> State<'a> {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
 
-        let screen_width = (camera.aspect*200.0).max(1.0);
-        let screen_height = 200.0;
+        let screen_width = (camera.aspect*SIZE).max(1.0);
+        let screen_height = SIZE;
 
         let depth_texture =
             texture::Texture::create_depth_texture(&device, screen_width as u32, screen_height as u32, "depth_texture");
@@ -409,8 +411,8 @@ impl<'a> State<'a> {
             self.camera.aspect = self.config.width as f32 / self.config.height as f32;
             self.surface.configure(&self.device, &self.config);
             
-            let screen_width = self.camera.aspect*200.0;
-            let screen_height = 200.0;
+            let screen_width = self.camera.aspect*SIZE;
+            let screen_height = SIZE;
             
             self.depth_texture =
                 texture::Texture::create_depth_texture(&self.device, screen_width as u32, screen_height as u32, "depth_texture");
